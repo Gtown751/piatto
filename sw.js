@@ -1,10 +1,10 @@
-const CACHE = 'piatto-privat-v3';
+const CACHE = 'piatto-privat-v4';
 const PHOTO_CACHE = 'piatto-fotos-v1';
 const PHOTO_MAX = 300;
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'no-cache' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -45,8 +45,10 @@ self.addEventListener('fetch', e => {
 
   // App-Seite: online immer die neueste Version laden, offline die gespeicherte Kopie nutzen
   if (req.mode === 'navigate') {
+    let fresh = req;
+    try { fresh = new Request(req, { cache: 'no-cache' }); } catch (err) { fresh = req; } // nie eine 10 Minuten alte Kopie aus dem Browser-Cache
     e.respondWith(
-      fetch(req).then(res => {
+      fetch(fresh).then(res => {
         if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
         return res;
       }).catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match('./index.html')))
